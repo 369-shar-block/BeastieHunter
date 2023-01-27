@@ -1,5 +1,7 @@
 using BeastieHunter.Data;
 using BeastieHunter.Models;
+using BeastieHunter.Services;
+using BeastieHunter.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +17,11 @@ builder.Services.AddIdentity<BTUser, IdentityRole>(options => options.SignIn.Req
     .AddDefaultUI()
     .AddDefaultTokenProviders()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+
+builder.Services.AddScoped<IBTRolesService, BTRolesService>();
+
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
