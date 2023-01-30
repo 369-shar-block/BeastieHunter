@@ -17,6 +17,8 @@ namespace BeastieHunter.Services
             _roleManager = roleManager;
             _userManager = userManager;
         }
+
+
         public async Task<List<BTUser>> GetAllMembersAsync(int companyId)
         {
             List<BTUser> result = new();
