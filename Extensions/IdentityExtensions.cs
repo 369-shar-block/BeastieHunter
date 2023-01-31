@@ -9,7 +9,17 @@ namespace BeastieHunter.Extensions
         {
             Claim claim = ((ClaimsIdentity)identity).FindFirst("CompanyId");
 
-            return (claim != null) ? int.Parse(claim.Value) : null;
+            int result;
+            if( claim != null)
+            {
+                result = int.Parse(claim.Value);
+            }
+            else
+            {
+                result = 0;
+            }
+
+            return result;
         }
     }
 }

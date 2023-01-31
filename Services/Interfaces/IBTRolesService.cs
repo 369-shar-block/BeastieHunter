@@ -1,4 +1,5 @@
 ﻿using BeastieHunter.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace BeastieHunter.Services.Interfaces
 {
@@ -8,6 +9,8 @@ namespace BeastieHunter.Services.Interfaces
 
 
         public Task<bool> IsUserInRoleAsync(BTUser user, string roleName);
+
+        public Task<List<IdentityRole>> GetRolesAsync();
 
         public Task<IEnumerable<string>> GetUserRolesAsync(BTUser user);
 
