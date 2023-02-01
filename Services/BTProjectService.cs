@@ -95,9 +95,24 @@ namespace BeastieHunter.Services
 
         public async Task ArchiveProjectAsync(Project project)
         {
-            project.Archived = true;
-            _context.Update(project);
-            await _context.SaveChangesAsync();
+            try
+            {
+                project.Archived = true;
+                await UpdateProjectAsync(project);
+
+                foreach(Ticket ticket in project.Tickets)
+                {
+                    ticket.ArchivedByProject= true;
+                    _context.Update(ticket);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+           
         }
 
         public async Task<List<BTUser>> GetAllProjectMembersExceptPMAsync(int projectId)
@@ -151,8 +166,30 @@ namespace BeastieHunter.Services
 
         public async Task<List<Project>> GetArchivedProjectsByCompany(int companyId)
         {
-            List<Project> projects = await GetAllProjectsByCompany(companyId);
-            return projects.Where(p => p.Archived == true).ToList();
+            List<Project> projects = await _context.Projects.Where(p => p.CompanyId == companyId && p.Archived == true)
+                                               .Include(p => p.Members)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.Comments)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.Attachments)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.History)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.Notifications)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.DeveloperUser)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.OwnerUser)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.TicketStatus)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.TicketPriority)
+                                               .Include(p => p.Tickets)
+                                               .ThenInclude(t => t.TicketType)
+                                               .Include(p => p.ProjectPriority)
+                                               .ToListAsync();
+
+            return projects;
         }
 
         public Task<List<BTUser>> GetDevelopersOnProjectAsync(int projectId)
@@ -368,6 +405,27 @@ namespace BeastieHunter.Services
 
                 Console.WriteLine($"******ERROR******** - Error Removing User from project. ---> {ex.Message}");
                 throw; 
+            }
+        }
+
+        public async Task RestoreProjectAsync(Project project)
+        {
+            try
+            {
+                project.Archived = false;
+                await UpdateProjectAsync(project);
+
+                foreach (Ticket ticket in project.Tickets)
+                {
+                    ticket.ArchivedByProject = false;
+                    _context.Update(ticket);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
             }
         }
 
