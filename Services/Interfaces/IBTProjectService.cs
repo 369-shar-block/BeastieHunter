@@ -47,5 +47,7 @@ namespace BeastieHunter.Services.Interfaces
         public Task RestoreProjectAsync(Project project);
 
         public Task UpdateProjectAsync(Project project);
+
+        public Task<bool> IsAssignedProjectManagerAsync(string userId, int projectId);
     }
 }

@@ -7,16 +7,36 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BeastieHunter.Data;
 using BeastieHunter.Models;
+using BeastieHunter.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using BeastieHunter.Extensions;
+using BeastieHunter.Models.Enums;
+using System.ComponentModel.Design;
 
 namespace BeastieHunter.Controllers
 {
     public class TicketsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IBTRolesService _rolesService;
+        private readonly IBTLookupService _lookupService;
+        private readonly IBTFileService _fileService;
+        private readonly IBTProjectService _projectService;
+        private readonly UserManager<BTUser> _userManager;
+        private readonly IBTCompanyInfoService _companyInfoService;
+        private readonly IBTTicketService _ticketService;
 
-        public TicketsController(ApplicationDbContext context)
+        public TicketsController(ApplicationDbContext context, IBTRolesService rolesService, IBTLookupService lookupService,
+                                     IBTFileService fileService, IBTProjectService projectService, UserManager<BTUser> userManager, IBTCompanyInfoService companyInfoService, IBTTicketService ticketService)
         {
             _context = context;
+            _rolesService = rolesService;
+            _lookupService = lookupService;
+            _fileService = fileService;
+            _projectService = projectService;
+            _userManager = userManager;
+            _companyInfoService = companyInfoService;
+            _ticketService = ticketService;
         }
 
         // GET: Tickets
@@ -26,21 +46,56 @@ namespace BeastieHunter.Controllers
             return View(await applicationDbContext.ToListAsync());
         }
 
+        public async Task<IActionResult> MyTickets()
+        {
+            BTUser btUser = await _userManager.GetUserAsync(User);
+
+            List<Ticket> tickets = await _ticketService.GetTicketsByUserIdAsync(btUser.Id, btUser.CompanyId);
+
+            return View(tickets);
+        }
+
+        public async Task<IActionResult> AllTickets()
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            List<Ticket> tickets = await _ticketService.GetAllTicketsByCompanyAsync(companyId);
+
+            if(User.IsInRole(nameof(Roles.Developer)) || User.IsInRole(nameof(Roles.Submitter)))
+            {
+                return View(tickets.Where(t => t.Archived == false));
+            }
+            else
+            {
+                return View(tickets);
+            }
+        }
+
+        public async Task<IActionResult> ArchivedTickets()
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            List<Ticket> tickets = await _ticketService.GetArchivedTicketsAsync(companyId);
+
+            return View(tickets);
+        }
+
+
+
+
+
         // GET: Tickets/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Tickets == null)
+            if (id == null )
             {
-                return NotFound();
+                return NotFound(); 
             }
 
-            var ticket = await _context.Tickets
-                .Include(t => t.OwnerUser)
-                .Include(t => t.Project)
-                .Include(t => t.TicketPriority)
-                .Include(t => t.TicketStatus)
-                .Include(t => t.TicketType)
-                .FirstOrDefaultAsync(m => m.Id == id);
+
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id.Value);
+
+
             if (ticket == null)
             {
                 return NotFound();
@@ -49,14 +104,30 @@ namespace BeastieHunter.Controllers
             return View(ticket);
         }
 
+
+
+
+
+
+
         // GET: Tickets/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["OwnerUserId"] = new SelectList(_context.Users, "Id", "Id");
-            ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Name");
-            ViewData["TicketPriorityId"] = new SelectList(_context.TicketPriorities, "Id", "Id");
-            ViewData["TicketStatusId"] = new SelectList(_context.TicketStatuses, "Id", "Id");
-            ViewData["TicketTypeId"] = new SelectList(_context.TicketTypes, "Id", "Id");
+            BTUser bTUser = await _userManager.GetUserAsync(User);
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            if (User.IsInRole(nameof(Roles.Admin)))
+            {
+                ViewData["ProjectId"] = new SelectList(await _projectService.GetAllProjectsByCompany(companyId), "Id", "Name");
+            }
+            else
+            {
+                ViewData["ProjectId"] = new SelectList(await _projectService.GetUserProjectsAsync(bTUser.Id), "Id", "Name");
+            }
+
+           
+            ViewData["TicketPriorityId"] = new SelectList(await _lookupService.GetTicketPrioritiesAsync(), "Id", "Name");
+            ViewData["TicketTypeId"] = new SelectList(await _lookupService.GetTicketTypesAsync(), "Id", "Name");
             return View();
         }
 
@@ -65,18 +136,36 @@ namespace BeastieHunter.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Description,Created,Updated,Archived,ProjectId,TicketTypeId,TicketPriorityId,TicketStatusId,OwnerUserId,DevloperUserId")] Ticket ticket)
+        public async Task<IActionResult> Create([Bind("Id,Title,Description,ProjectId,TicketTypeId,TicketPriorityId")] Ticket ticket)
         {
+            BTUser btUser = await _userManager.GetUserAsync(User);
+
             if (ModelState.IsValid)
             {
-                _context.Add(ticket);
-                await _context.SaveChangesAsync();
+                
+
+
+                ticket.Created = DateTimeOffset.Now;
+                ticket.OwnerUserId = btUser.Id;
+
+                ticket.TicketStatusId = (await _ticketService.LookupTicketStatusIdAsync(nameof(BTTicketStatus.New))).Value;
+
+                await _ticketService.AddNewTicketAsync(ticket);
+
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["OwnerUserId"] = new SelectList(_context.Users, "Id", "Id", ticket.OwnerUserId);
-            ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Name", ticket.ProjectId);
+
+            if (User.IsInRole(nameof(Roles.Admin)))
+            {
+                ViewData["ProjectId"] = new SelectList(await _projectService.GetAllProjectsByCompany(btUser.CompanyId), "Id", "Name");
+            }
+            else
+            {
+                ViewData["ProjectId"] = new SelectList(await _projectService.GetUserProjectsAsync(btUser.Id), "Id", "Name");
+            }
+
+
             ViewData["TicketPriorityId"] = new SelectList(_context.TicketPriorities, "Id", "Id", ticket.TicketPriorityId);
-            ViewData["TicketStatusId"] = new SelectList(_context.TicketStatuses, "Id", "Id", ticket.TicketStatusId);
             ViewData["TicketTypeId"] = new SelectList(_context.TicketTypes, "Id", "Id", ticket.TicketTypeId);
             return View(ticket);
         }
@@ -84,21 +173,22 @@ namespace BeastieHunter.Controllers
         // GET: Tickets/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null || _context.Tickets == null)
+            if (id == null )
             {
                 return NotFound();
             }
 
-            var ticket = await _context.Tickets.FindAsync(id);
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id.Value);
+
             if (ticket == null)
             {
                 return NotFound();
             }
-            ViewData["OwnerUserId"] = new SelectList(_context.Users, "Id", "Id", ticket.OwnerUserId);
-            ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Name", ticket.ProjectId);
-            ViewData["TicketPriorityId"] = new SelectList(_context.TicketPriorities, "Id", "Id", ticket.TicketPriorityId);
-            ViewData["TicketStatusId"] = new SelectList(_context.TicketStatuses, "Id", "Id", ticket.TicketStatusId);
-            ViewData["TicketTypeId"] = new SelectList(_context.TicketTypes, "Id", "Id", ticket.TicketTypeId);
+            
+            
+            ViewData["TicketPriorityId"] = new SelectList(await _lookupService.GetTicketPrioritiesAsync(), "Id", "Name", ticket.TicketPriorityId);
+            ViewData["TicketStatusId"] = new SelectList(await _lookupService.GetTicketStatusesAsync(), "Id", "Name", ticket.TicketStatusId);
+            ViewData["TicketTypeId"] = new SelectList(await _lookupService.GetTicketTypesAsync(), "Id", "Name", ticket.TicketTypeId);
             return View(ticket);
         }
 
@@ -116,14 +206,15 @@ namespace BeastieHunter.Controllers
 
             if (ModelState.IsValid)
             {
+                BTUser btUser = await _userManager.GetUserAsync(User);
                 try
                 {
-                    _context.Update(ticket);
-                    await _context.SaveChangesAsync();
+                    ticket.Updated = DateTimeOffset.Now;
+                    await _ticketService.UpdateTicketAsync(ticket);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!TicketExists(ticket.Id))
+                    if (!await TicketExists(ticket.Id))
                     {
                         return NotFound();
                     }
@@ -134,29 +225,28 @@ namespace BeastieHunter.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["OwnerUserId"] = new SelectList(_context.Users, "Id", "Id", ticket.OwnerUserId);
-            ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Name", ticket.ProjectId);
-            ViewData["TicketPriorityId"] = new SelectList(_context.TicketPriorities, "Id", "Id", ticket.TicketPriorityId);
-            ViewData["TicketStatusId"] = new SelectList(_context.TicketStatuses, "Id", "Id", ticket.TicketStatusId);
-            ViewData["TicketTypeId"] = new SelectList(_context.TicketTypes, "Id", "Id", ticket.TicketTypeId);
+
+
+            ViewData["TicketPriorityId"] = new SelectList(await _lookupService.GetTicketPrioritiesAsync(), "Id", "Name", ticket.TicketPriorityId);
+            ViewData["TicketStatusId"] = new SelectList(await _lookupService.GetTicketStatusesAsync(), "Id", "Name", ticket.TicketStatusId);
+            ViewData["TicketTypeId"] = new SelectList(await _lookupService.GetTicketTypesAsync(), "Id", "Name", ticket.TicketTypeId);
+
             return View(ticket);
         }
 
         // GET: Tickets/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Archive(int? id)
         {
-            if (id == null || _context.Tickets == null)
+            if (id == null )
             {
                 return NotFound();
             }
 
-            var ticket = await _context.Tickets
-                .Include(t => t.OwnerUser)
-                .Include(t => t.Project)
-                .Include(t => t.TicketPriority)
-                .Include(t => t.TicketStatus)
-                .Include(t => t.TicketType)
-                .FirstOrDefaultAsync(m => m.Id == id);
+           
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id.Value);
+
+
+
             if (ticket == null)
             {
                 return NotFound();
@@ -166,27 +256,56 @@ namespace BeastieHunter.Controllers
         }
 
         // POST: Tickets/Delete/5
-        [HttpPost, ActionName("Delete")]
+        [HttpPost, ActionName("Archive")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> ArchiveConfirmed(int id)
         {
-            if (_context.Tickets == null)
-            {
-                return Problem("Entity set 'ApplicationDbContext.Tickets'  is null.");
-            }
-            var ticket = await _context.Tickets.FindAsync(id);
-            if (ticket != null)
-            {
-                _context.Tickets.Remove(ticket);
-            }
-            
-            await _context.SaveChangesAsync();
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id);
+            ticket.Archived = true;
+            await _ticketService.UpdateTicketAsync(ticket);
+
             return RedirectToAction(nameof(Index));
         }
 
-        private bool TicketExists(int id)
+
+        // GET: Tickets/Delete/5
+        public async Task<IActionResult> Restore(int? id)
         {
-          return _context.Tickets.Any(e => e.Id == id);
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id.Value);
+
+
+
+            if (ticket == null)
+            {
+                return NotFound();
+            }
+
+            return View(ticket);
+        }
+
+        // POST: Tickets/Restore/5
+        [HttpPost, ActionName("Restore")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RestoreConfirmed(int id)
+        {
+            Ticket ticket = await _ticketService.GetTicketByIdAsync(id);
+            ticket.Archived = false;
+            await _ticketService.UpdateTicketAsync(ticket);
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        private async Task<bool> TicketExists(int id)
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            return (await _ticketService.GetAllTicketsByCompanyAsync(companyId)).Any(t => t.Id == id);
         }
     }
 }
