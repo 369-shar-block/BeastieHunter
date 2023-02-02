@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using BeastieHunter.Extensions;
 using BeastieHunter.Models.Enums;
 using System.ComponentModel.Design;
+using System.IO;
 
 namespace BeastieHunter.Controllers
 {
@@ -80,8 +81,43 @@ namespace BeastieHunter.Controllers
             return View(tickets);
         }
 
+        public async Task<IActionResult> ShowFile(int id)
+        {
+            TicketAttachment ticketAttachment = await _ticketService.GetTicketAttachmentByIdAsync(id);
+            string fileName = ticketAttachment.FileName;
+            byte[] fileData = ticketAttachment.FileData;
+            string ext = Path.GetExtension(fileName).Replace(".", "");
 
+            Response.Headers.Add("Content-Disposition", $"inline; filename={fileName}");
+            return File(fileData, $"application/{ext}");
+        }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddTicketAttachment([Bind("Id,FormFile,Description,TicketId")] TicketAttachment ticketAttachment)
+        {
+            string statusMessage;
+
+            if (ModelState.IsValid && ticketAttachment.FormFile != null)
+            {
+                ticketAttachment.FileData = await _fileService.ConvertFileToByteArrayAsync(ticketAttachment.FormFile);
+                ticketAttachment.FileName = ticketAttachment.FormFile.FileName;
+                ticketAttachment.FileContentType = ticketAttachment.FormFile.ContentType;
+
+                ticketAttachment.Created = DateTimeOffset.Now;
+                ticketAttachment.UserId = _userManager.GetUserId(User);
+
+                await _ticketService.AddTicketAttachmentAsync(ticketAttachment);
+                statusMessage = "Success: New attachment added to Ticket.";
+            }
+            else
+            {
+                statusMessage = "Error: Invalid data.";
+
+            }
+
+            return RedirectToAction("Details", new { id = ticketAttachment.TicketId, message = statusMessage });
+        }
 
 
         // GET: Tickets/Details/5
@@ -232,6 +268,29 @@ namespace BeastieHunter.Controllers
             ViewData["TicketTypeId"] = new SelectList(await _lookupService.GetTicketTypesAsync(), "Id", "Name", ticket.TicketTypeId);
 
             return View(ticket);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddTicketComment([Bind("Id,TicketId,Comment")] TicketComment ticketComment)
+        {
+            if (!ModelState.IsValid)
+            {
+                try
+                {
+                    ticketComment.UserId = _userManager.GetUserId(User);
+                    ticketComment.Created = DateTimeOffset.Now;
+
+                    await _ticketService.AddTicketCommmentAsync(ticketComment);
+                }
+                catch (Exception)
+                {
+
+                    throw;
+                }
+            }
+
+            return RedirectToAction("Details", new {id=ticketComment.TicketId});
         }
 
         // GET: Tickets/Delete/5
