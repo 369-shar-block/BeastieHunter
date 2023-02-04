@@ -2,6 +2,7 @@
 using BeastieHunter.Models;
 using BeastieHunter.Models.Enums;
 using BeastieHunter.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeastieHunter.Services
@@ -49,7 +50,7 @@ namespace BeastieHunter.Services
 
             try
             {
-                await AddProjectManagerAsync(userId, projectId);
+                await AddUserToProjectAsync(userId, projectId);
                 return true;
             }
             catch (Exception ex)
@@ -259,6 +260,33 @@ namespace BeastieHunter.Services
         {
             throw new NotImplementedException();
         }
+
+        public async Task<List<Project>> GetUnassignedProjectsAsync(int companyId)
+        {
+            List<Project> result = new();
+            List<Project> projects = new();
+
+            try
+            {
+                projects = await _context.Projects.Include(p => p.ProjectPriority).Where(p => p.CompanyId == companyId).ToListAsync();
+
+                foreach(Project project in projects)
+                {
+                    if((await GetProjectMembersByRoleAsync(project.Id, nameof(Roles.ProjectManager))).Count == 0)
+                    {
+                        result.Add(project);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
+            return result;
+        }
+ 
 
         public async Task<List<Project>> GetUserProjectsAsync(string userId)
         {

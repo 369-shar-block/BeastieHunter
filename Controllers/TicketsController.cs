@@ -13,9 +13,12 @@ using BeastieHunter.Extensions;
 using BeastieHunter.Models.Enums;
 using System.ComponentModel.Design;
 using System.IO;
+using Microsoft.AspNetCore.Authorization;
+using BeastieHunter.Models.ViewModels;
 
 namespace BeastieHunter.Controllers
 {
+    [Authorize]
     public class TicketsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -26,11 +29,12 @@ namespace BeastieHunter.Controllers
         private readonly UserManager<BTUser> _userManager;
         private readonly IBTCompanyInfoService _companyInfoService;
         private readonly IBTTicketService _ticketService;
+        private readonly IBTTicketHistoryService _historyService;
 
-        public TicketsController(ApplicationDbContext context, IBTRolesService rolesService, IBTLookupService lookupService,
-                                     IBTFileService fileService, IBTProjectService projectService, UserManager<BTUser> userManager, IBTCompanyInfoService companyInfoService, IBTTicketService ticketService)
+        public TicketsController(IBTRolesService rolesService, IBTLookupService lookupService,
+                                     IBTFileService fileService, IBTProjectService projectService, UserManager<BTUser> userManager, IBTCompanyInfoService companyInfoService, IBTTicketService ticketService, IBTTicketHistoryService historyService, ApplicationDbContext context)
         {
-            _context = context;
+
             _rolesService = rolesService;
             _lookupService = lookupService;
             _fileService = fileService;
@@ -38,14 +42,11 @@ namespace BeastieHunter.Controllers
             _userManager = userManager;
             _companyInfoService = companyInfoService;
             _ticketService = ticketService;
+            _historyService = historyService;
+            _context = context;
         }
 
-        // GET: Tickets
-        public async Task<IActionResult> Index()
-        {
-            var applicationDbContext = _context.Tickets.Include(t => t.OwnerUser).Include(t => t.Project).Include(t => t.TicketPriority).Include(t => t.TicketStatus).Include(t => t.TicketType);
-            return View(await applicationDbContext.ToListAsync());
-        }
+
 
         public async Task<IActionResult> MyTickets()
         {
@@ -81,6 +82,78 @@ namespace BeastieHunter.Controllers
             return View(tickets);
         }
 
+        [Authorize(Roles ="Admin,ProjectManager")]
+        public async Task<IActionResult> UnassignedTickets()
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+            string btUserId = _userManager.GetUserId(User);
+
+            List<Ticket> tickets = await _ticketService.GetUnassignedTicketsAsync(companyId);
+
+            if (User.IsInRole(nameof(Roles.Admin)))
+            {
+                return View(tickets);
+            }
+            else
+            {
+                List<Ticket> pmTickets = new();
+
+                foreach(Ticket ticket in tickets)
+                {
+                    if(await _projectService.IsAssignedProjectManagerAsync(btUserId, ticket.ProjectId))
+                    {
+                        pmTickets.Add(ticket);
+                    }
+                }
+
+                return View(pmTickets);
+            }
+        }
+
+        [Authorize(Roles = "Admin, ProjectManager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignDeveloper(AssignDeveloperViewModel model)
+        {
+            if(model.DeverloperId != null)
+            {
+                BTUser btUser = await _userManager.GetUserAsync(User);
+                Ticket oldTicket = await _ticketService.GetTicketAsNoTrackingAsync(model.Ticket.Id);
+                try
+                {
+                    await _ticketService.AssignTicketAsync(model.Ticket.Id, model.DeverloperId);
+                }
+                catch (Exception)
+                {
+
+                    throw;
+                }
+
+                Ticket newTicket = await _ticketService.GetTicketAsNoTrackingAsync(model.Ticket.Id);
+
+                await _historyService.AddHistoryAsync(oldTicket, newTicket, btUser.Id);
+
+
+                return RedirectToAction(nameof(Details), new {id = model.Ticket.Id});
+            }
+
+            return RedirectToAction(nameof(AssignDeveloper), new { id = model.Ticket.Id });
+        }
+
+
+        [HttpGet]
+        [Authorize(Roles = "Admin, ProjectManager")]
+        public async Task<IActionResult> AssignDeveloper(int id)
+        {
+            AssignDeveloperViewModel model = new();
+
+            model.Ticket = await _ticketService.GetTicketByIdAsync(id);
+            model.Developers = new SelectList(await _projectService.GetProjectMembersByRoleAsync(model.Ticket.ProjectId, nameof(Roles.Developer)), "Id", "FullName");
+
+            return View(model);
+        }
+
+
         public async Task<IActionResult> ShowFile(int id)
         {
             TicketAttachment ticketAttachment = await _ticketService.GetTicketAttachmentByIdAsync(id);
@@ -98,7 +171,7 @@ namespace BeastieHunter.Controllers
         {
             string statusMessage;
 
-            if (ModelState.IsValid && ticketAttachment.FormFile != null)
+            if (ticketAttachment.FormFile != null)
             {
                 ticketAttachment.FileData = await _fileService.ConvertFileToByteArrayAsync(ticketAttachment.FormFile);
                 ticketAttachment.FileName = ticketAttachment.FormFile.FileName;
@@ -106,8 +179,12 @@ namespace BeastieHunter.Controllers
 
                 ticketAttachment.Created = DateTimeOffset.Now;
                 ticketAttachment.UserId = _userManager.GetUserId(User);
-
+                 
                 await _ticketService.AddTicketAttachmentAsync(ticketAttachment);
+
+
+                await _historyService.AddHistoryAsync(ticketAttachment.TicketId, nameof(TicketComment), ticketAttachment.UserId);
+
                 statusMessage = "Success: New attachment added to Ticket.";
             }
             else
@@ -179,14 +256,17 @@ namespace BeastieHunter.Controllers
             if (ModelState.IsValid)
             {
                 
-
-
                 ticket.Created = DateTimeOffset.Now;
                 ticket.OwnerUserId = btUser.Id;
 
                 ticket.TicketStatusId = (await _ticketService.LookupTicketStatusIdAsync(nameof(BTTicketStatus.New))).Value;
 
                 await _ticketService.AddNewTicketAsync(ticket);
+
+                Ticket newTicket = await _ticketService.GetTicketAsNoTrackingAsync(ticket.Id);
+                await _historyService.AddHistoryAsync(null, newTicket, btUser.Id);
+
+
 
                 return RedirectToAction(nameof(Index));
             }
@@ -243,6 +323,7 @@ namespace BeastieHunter.Controllers
             if (ModelState.IsValid)
             {
                 BTUser btUser = await _userManager.GetUserAsync(User);
+                Ticket oldTicket = await _ticketService.GetTicketAsNoTrackingAsync(ticket.Id);
                 try
                 {
                     ticket.Updated = DateTimeOffset.Now;
@@ -259,6 +340,10 @@ namespace BeastieHunter.Controllers
                         throw;
                     }
                 }
+
+
+                Ticket newTicket = await _ticketService.GetTicketAsNoTrackingAsync(ticket.Id);
+                await _historyService.AddHistoryAsync(oldTicket, newTicket, btUser.Id);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -274,7 +359,7 @@ namespace BeastieHunter.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddTicketComment([Bind("Id,TicketId,Comment")] TicketComment ticketComment)
         {
-            if (!ModelState.IsValid)
+            if (ModelState.IsValid)
             {
                 try
                 {
@@ -282,6 +367,10 @@ namespace BeastieHunter.Controllers
                     ticketComment.Created = DateTimeOffset.Now;
 
                     await _ticketService.AddTicketCommmentAsync(ticketComment);
+
+                    await _historyService.AddHistoryAsync(ticketComment.TicketId, nameof(TicketComment), ticketComment.UserId);
+
+
                 }
                 catch (Exception)
                 {
@@ -294,6 +383,7 @@ namespace BeastieHunter.Controllers
         }
 
         // GET: Tickets/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Archive(int? id)
         {
             if (id == null )
@@ -317,6 +407,7 @@ namespace BeastieHunter.Controllers
         // POST: Tickets/Delete/5
         [HttpPost, ActionName("Archive")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> ArchiveConfirmed(int id)
         {
             Ticket ticket = await _ticketService.GetTicketByIdAsync(id);
@@ -328,6 +419,7 @@ namespace BeastieHunter.Controllers
 
 
         // GET: Tickets/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Restore(int? id)
         {
             if (id == null)
@@ -351,6 +443,7 @@ namespace BeastieHunter.Controllers
         // POST: Tickets/Restore/5
         [HttpPost, ActionName("Restore")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> RestoreConfirmed(int id)
         {
             Ticket ticket = await _ticketService.GetTicketByIdAsync(id);

@@ -9,6 +9,8 @@ namespace BeastieHunter.Services.Interfaces
         public Task<Ticket> GetTicketByIdAsync(int ticketId);
         public Task ArchiveTicketAsync(Ticket ticket);
 
+        public Task<Ticket> GetTicketAsNoTrackingAsync(int ticketId);
+
         public Task<TicketAttachment> GetTicketAttachmentByIdAsync(int ticketAttachmentId);
         public Task AddTicketCommmentAsync(TicketComment ticketComment);
         public Task AssignTicketAsync(int ticketId, string userId);
@@ -24,6 +26,8 @@ namespace BeastieHunter.Services.Interfaces
         public Task<List<Ticket>> GetProjectTicketsByStatusAsync(string statusName, int companyId, int projectId);
         public Task<List<Ticket>> GetProjectTicketsByPriorityAsync(string priorityName, int companyId, int projectId);
         public Task<List<Ticket>> GetProjectTicketsByTypeAsync(string typeName, int companyId, int projectId);
+
+        public Task<List<Ticket>> GetUnassignedTicketsAsync(int companyId);
 
         public Task AddTicketAttachmentAsync(TicketAttachment ticketAttachment);
         public Task<int?> LookupTicketPriorityIdAsync(string priorityName);

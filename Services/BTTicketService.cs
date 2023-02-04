@@ -150,7 +150,7 @@ namespace BeastieHunter.Services
             }
         }
 
-        public async  Task<List<Ticket>> GetAllTicketsByPriorityAsync(int companyId, string priorityName)
+        public async Task<List<Ticket>> GetAllTicketsByPriorityAsync(int companyId, string priorityName)
         {
             int priorityId = (await LookupTicketPriorityIdAsync(priorityName)).Value;
 
@@ -322,7 +322,7 @@ namespace BeastieHunter.Services
                 .Include(t => t.TicketStatus)
                 .Include(t => t.TicketType)
                 .Include(t => t.Comments)
-                .Include( t => t.Attachments)
+                .Include(t => t.Attachments)
                 .Include(t => t.History)
                 .FirstOrDefaultAsync(t => t.Id == ticketId);
             }
@@ -455,6 +455,7 @@ namespace BeastieHunter.Services
 
         public async Task<int?> LookupTicketTypeIdAsync(string typeName)
         {
+
             try
             {
                 TicketType type = await _context.TicketTypes.FirstOrDefaultAsync(p => p.Name == typeName);
@@ -480,5 +481,42 @@ namespace BeastieHunter.Services
                 throw;
             }
         }
+
+        public async Task<List<Ticket>> GetUnassignedTicketsAsync(int companyId)
+        {
+            List<Ticket> tickets = new();
+
+            try
+            {
+                tickets = (await GetAllTicketsByCompanyAsync(companyId)).Where(t => string.IsNullOrEmpty(t.DevloperUserId)).ToList();
+                return tickets;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        public async Task<Ticket> GetTicketAsNoTrackingAsync(int ticketId)
+        {
+            try
+            {
+                return await _context.Tickets
+                    .Include(t => t.DeveloperUser)
+                .Include(t => t.Project)
+                .Include(t => t.TicketPriority)
+                .Include(t => t.TicketStatus)
+                .Include(t => t.TicketType)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == ticketId);
+            }
+            
+            catch (Exception)
+            {
+
+                throw;
+            }
+}
     }
 }

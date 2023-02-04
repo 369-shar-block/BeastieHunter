@@ -12,7 +12,7 @@ namespace BeastieHunter.Services.Interfaces
 
         public Task ArchiveProjectAsync(Project project);
 
-
+        public Task<List<Project>> GetUnassignedProjectsAsync(int companyId);
 
         public Task<List<Project>> GetAllProjectsByCompany(int companyId);
 

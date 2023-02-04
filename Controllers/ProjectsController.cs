@@ -12,12 +12,15 @@ using BeastieHunter.Services.Interfaces;
 using BeastieHunter.Models.ViewModels;
 using BeastieHunter.Models.Enums;
 using Microsoft.AspNetCore.Identity;
+using BeastieHunter.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BeastieHunter.Controllers
 {
+    [Authorize]
     public class ProjectsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        
         private readonly IBTRolesService _rolesService;
         private readonly IBTLookupService _lookupService;
         private readonly IBTFileService _fileService;
@@ -25,9 +28,9 @@ namespace BeastieHunter.Controllers
         private readonly UserManager<BTUser> _userManager;
         private readonly IBTCompanyInfoService _companyInfoService;
 
-        public ProjectsController(ApplicationDbContext context, IBTRolesService rolesService, IBTLookupService lookupService, IBTFileService fileService, IBTProjectService projectService, UserManager<BTUser> userManager, IBTCompanyInfoService companyInfoService)
+        public ProjectsController( IBTRolesService rolesService, IBTLookupService lookupService, IBTFileService fileService, IBTProjectService projectService, UserManager<BTUser> userManager, IBTCompanyInfoService companyInfoService)
         {
-            _context = context;
+           
             _rolesService = rolesService;
             _lookupService = lookupService;
             _fileService = fileService;
@@ -36,12 +39,7 @@ namespace BeastieHunter.Controllers
             _companyInfoService = companyInfoService;
         }
 
-        // GET: Projects
-        public async Task<IActionResult> Index()
-        {
-            var applicationDbContext = _context.Projects.Include(p => p.Company).Include(p => p.ProjectPriority);
-            return View(await applicationDbContext.ToListAsync());
-        }
+      
 
         // GET: Projects
         public async Task<IActionResult> MyProjects()
@@ -82,12 +80,101 @@ namespace BeastieHunter.Controllers
             return View(projects);
         }
 
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UnassignedProjects()
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            List<Project> projects = new();
+
+            projects = await _projectService.GetUnassignedProjectsAsync(companyId);
+
+            return View(projects);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        public async Task<IActionResult> AssignPM(int projectId)
+        {
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            AssignPMViewModel model = new();
+
+            model.Project = await _projectService.GetProjectByIdAsync(projectId, companyId);
+            model.PMList = new SelectList(await _rolesService.GetUsersInRoleAsync(nameof(Roles.ProjectManager), companyId), "Id", "FullName");
+
+            return View(model);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignPM(AssignPMViewModel model)
+        {
+            if (!string.IsNullOrEmpty(model.PMID))
+            {
+                await _projectService.AddProjectManagerAsync(model.PMID, model.Project.Id);
+
+                return RedirectToAction(nameof(Details), new {id=model.Project.Id});
+            }
+
+            return RedirectToAction(nameof(AssignPM), new {projectId = model.Project.Id});
+        }
+
+
+        [Authorize(Roles = "Admin, ProjectManager")]
+        [HttpGet]
+        public async Task<IActionResult> AssignMembers(int id)
+        {
+            ProjectMembersViewModel model = new();
+
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            model.Project = await _projectService.GetProjectByIdAsync(id, companyId);
+
+            List<BTUser> developers = await _rolesService.GetUsersInRoleAsync(nameof(Roles.Developer), companyId);
+            List<BTUser> submitters = await _rolesService.GetUsersInRoleAsync(nameof(Roles.Submitter), companyId);
+
+            List<BTUser> companyMembers = developers.Concat(submitters).ToList();
+
+            List<string> projectMembers = model.Project.Members.Select(m => m.Id).ToList();
+            model.Users = new MultiSelectList(companyMembers, "Id", "FullName", projectMembers);
+
+            return View(model);
+        }
+
+        [Authorize(Roles = "Admin, ProjectManager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssignMembers(ProjectMembersViewModel model)
+        {
+            if(model.SelectedUsers != null)
+            {
+                List<string> memberIds = (await _projectService.GetAllProjectMembersExceptPMAsync(model.Project.Id)).Select(model => model.Id).ToList();
+
+                foreach(string member in memberIds)
+                {
+                    await _projectService.RemoveUserFromProjectAsync(member, model.Project.Id);
+                }
+
+                foreach(string member in model.SelectedUsers)
+                {
+                    await _projectService.AddUserToProjectAsync(member, model.Project.Id);
+                }
+
+                return RedirectToAction("Details", "Projects", new { id = model.Project.Id });
+
+            }
+
+            return RedirectToAction(nameof(AssignMembers), new { id = model.Project.Id });
+        }
+
 
 
         // GET: Projects/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Projects == null)
+            if (id == null )
             {
                 return NotFound();
             }
@@ -110,6 +197,7 @@ namespace BeastieHunter.Controllers
 
 
         // GET: Projects/Create
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Create()
         {
             int companyId = User.Identity.GetCompanyId().Value;
@@ -132,6 +220,7 @@ namespace BeastieHunter.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Create(AddProjectWithPMViewModel model)
         {
 
@@ -178,6 +267,7 @@ namespace BeastieHunter.Controllers
 
 
         // GET: Projects/Edit/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Edit(int? id)
         {
             int companyId = User.Identity.GetCompanyId().Value;
@@ -199,6 +289,7 @@ namespace BeastieHunter.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Edit(AddProjectWithPMViewModel model)
         {
             if (model != null)
@@ -224,10 +315,17 @@ namespace BeastieHunter.Controllers
 
                     return RedirectToAction("Index");
                 }
-                catch (Exception)
+                catch (DbUpdateConcurrencyException)
                 {
 
-                    throw;
+                    if (!await ProjectExists(model.Project.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
             }
 
@@ -235,9 +333,10 @@ namespace BeastieHunter.Controllers
         }
 
         // GET: Projects/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Archive(int? id)
         {
-            if (id == null || _context.Projects == null)
+            if (id == null)
             {
                 return NotFound();
             }
@@ -254,6 +353,7 @@ namespace BeastieHunter.Controllers
         }
 
         // POST: Projects/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         [HttpPost, ActionName("Archive")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ArchiveConfirmed(int id)
@@ -270,9 +370,10 @@ namespace BeastieHunter.Controllers
 
 
         // GET: Projects/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         public async Task<IActionResult> Restore(int? id)
         {
-            if (id == null || _context.Projects == null)
+            if (id == null)
             {
                 return NotFound();
             }
@@ -289,6 +390,7 @@ namespace BeastieHunter.Controllers
         }
 
         // POST: Projects/Delete/5
+        [Authorize(Roles = "Admin, ProjectManager")]
         [HttpPost, ActionName("Restore")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RestoreConfirmed(int id)
@@ -308,9 +410,11 @@ namespace BeastieHunter.Controllers
 
 
 
-        private bool ProjectExists(int id)
+        private async Task<bool> ProjectExists(int id)
         {
-            return _context.Projects.Any(e => e.Id == id);
+            int companyId = User.Identity.GetCompanyId().Value;
+
+            return (await _projectService.GetAllProjectsByCompany(companyId)).Any(p => p.Id == id);
         }
     }
 }
