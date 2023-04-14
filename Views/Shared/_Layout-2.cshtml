@@ -1,0 +1,108 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<BTUser> SignInManager
+@using BeastieHunter.Models.Enums
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Beastie Hunter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="~/assets/css/animate.min.css" />
+    <link rel="stylesheet" href="~/assets/plugins/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/plugins/font-awesome/font-awesome.min.css">
+    <!-- Themify Icon CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/themify-icons/themify-icons.css">
+    <!-- Perfect Scrollbar CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/perfect-scrollbar/perfect-scrollbar.min.css">
+    <!-- Jvector CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/jvector/css/jquery-jvectormap.css">
+    <!-- Daterange CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/daterangepicker/css/daterangepicker.css">
+    <!-- Bootstrap-select CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/bootstrap-select/css/bootstrap-select.min.css">
+    <!-- Summernote CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/summernote/css/summernote.css">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="~/assets/css/seipkon.css">
+    <!-- Responsive CSS -->
+    <link rel="stylesheet" href="~/assets/css/responsive.css">
+
+
+</head>
+<body class="body_white_bg">
+    @* <div id="loader-wrapper">
+    <div id="loader"></div>
+    <div class="loader-section section-left"></div>
+    <div class="loader-section section-right"></div>
+    </div>*@
+
+
+    <!-- Login Page Header Area Start -->
+    <div class="seipkon-login-page-header-area">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-4 col-sm-4">
+                    <div class="login-page-logo">
+                        <a href="index.html">
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-8 col-sm-8">
+                    <div class="login-page-logo-right">
+                        <p>Already have an account?</p>
+                        <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Log in</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @RenderBody()
+
+
+
+
+
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+    <!-- jQuery -->
+    <script src="~/assets/js/jquery-3.1.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="~/assets/plugins/bootstrap/bootstrap.min.js"></script>
+    <!-- Bootstrap-select JS -->
+    <script src="~/assets/plugins/bootstrap-select/js/bootstrap-select.min.js"></script>
+    <!-- Daterange JS -->
+    <script src="~/assets/plugins/daterangepicker/js/moment.min.js"></script>
+    <script src="~/assets/plugins/daterangepicker/js/daterangepicker.js"></script>
+    <!-- Jvector JS -->
+    <script src="~/assets/plugins/jvector/js/jquery-jvectormap-1.2.2.min.js"></script>
+    <script src="~/assets/plugins/jvector/js/jquery-jvectormap-world-mill-en.js"></script>
+    <script src="~/assets/plugins/jvector/js/jvector-init.js"></script>
+    <!-- Raphael JS -->
+    <script src="~/assets/plugins/raphael/js/raphael.min.js"></script>
+    <!-- Morris JS -->
+    <script src="~/assets/plugins/morris/js/morris.min.js"></script>
+    <!-- Sparkline JS -->
+    <script src="~/assets/plugins/sparkline/js/jquery.sparkline.js"></script>
+    <!-- Chart JS -->
+    <script src="~/assets/plugins/charts/js/Chart.js"></script>
+    <!-- Datatables -->
+    <script src="~/assets/plugins/datatables/js/jquery.dataTables.min.js"></script>
+    <!-- Perfect Scrollbar JS -->
+    <script src="~/assets/plugins/perfect-scrollbar/jquery-perfect-scrollbar.min.js"></script>
+    <!-- Vue JS -->
+    <script src="~/assets/plugins/vue/vue.min.js"></script>
+    <!-- Summernote JS -->
+    <script src="~/assets/plugins/summernote/js/summernote.js"></script>
+    <script src="~/assets/plugins/summernote/js/custom-summernote.js"></script>
+    <!-- Dashboard JS -->
+    <script src="~/assets/js/dashboard.js"></script>
+    <!-- Custom JS -->
+    <script src="~/assets/js/seipkon.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

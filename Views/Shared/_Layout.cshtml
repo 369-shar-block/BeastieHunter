@@ -1,0 +1,271 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<BTUser> SignInManager
+@using BeastieHunter.Models.Enums
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Beastie Hunter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="~/assets/css/animate.min.css" />
+    <link rel="stylesheet" href="~/assets/plugins/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/plugins/font-awesome/font-awesome.min.css">
+    <!-- Themify Icon CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/themify-icons/themify-icons.css">
+    <!-- Perfect Scrollbar CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/perfect-scrollbar/perfect-scrollbar.min.css">
+    <!-- Jvector CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/jvector/css/jquery-jvectormap.css">
+    <!-- Daterange CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/daterangepicker/css/daterangepicker.css">
+    <!-- Bootstrap-select CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/bootstrap-select/css/bootstrap-select.min.css">
+    <!-- Summernote CSS -->
+    <link rel="stylesheet" href="~/assets/plugins/summernote/css/summernote.css">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="~/assets/css/seipkon.css">
+    <!-- Responsive CSS -->
+    <link rel="stylesheet" href="~/assets/css/responsive.css">
+
+
+</head>
+<body>
+    @* <div id="loader-wrapper">
+    <div id="loader"></div>
+    <div class="loader-section section-left"></div>
+    <div class="loader-section section-right"></div>
+    </div>*@
+
+
+    <div class="wrapper">
+        
+       
+            <aside class="seipkon-main-sidebar">
+   
+                <nav id="sidebar">
+                <partial name="_LoginPartial" />
+                    <div class="menu-section">
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <h3>General</h3>
+                        <ul class="list-unstyled components">
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Home" asp-action="Dashboard" class="nav-link px-sm-0 px-2">
+                                    <i class="fs-5 bi-house"></i><span class="ms-1 d-none d-sm-inline">Home</span>
+                                </a>
+                            </li>
+                            <li class="">
+                                <a asp-area="" asp-controller="Companies" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-building"></i><span class="ms-1 d-none d-sm-inline">Company</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    @if (User.IsInRole(nameof(Roles.Admin)))
+                                    {
+
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Companies" asp-action="ManageUserRoles">Manage Roles</a></li>
+
+                                    }
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a asp-area="" asp-controller="Projects" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-file-earmark-ppt"></i><span class="ms-1 d-none d-sm-inline">Projects</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="Create">New project...</a></li>
+                                    @*<li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="Index">Index</a></li>*@
+                                    @if (!User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="MyProjects">My Projects</a></li>
+                                    }
+
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="AllProjects">All Projects</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="ArchivedProjects">Archived Projects</a></li>
+                                    @if (User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="UnassignedProjects">Unassigned Projects</a></li>
+                                    }
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a asp-area="" asp-controller="Tickets" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-file-earmark-font"></i><span class="ms-1 d-none d-sm-inline">Tickets</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="Create">New ticket...</a></li>
+                                   @* <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="Index">Index</a></li>*@
+                                    @if (!User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="MyTickets">My Tickets</a></li>
+                                    }
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="AllTickets">All Tickets</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="ArchivedTickets">Archived Tickets</a></li>
+                                    @if (User.IsInRole(nameof(Roles.Admin)) || User.IsInRole(nameof(Roles.ProjectManager)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="UnassignedTickets">Unassigned Tickets</a></li>
+                                    }
+
+                                </ul>
+                            </li>
+                            @*<li>
+                                <a asp-area="" asp-controller="Notifications" asp-action="Index" class="nav-link px-sm-0 px-2">
+                                    <i class="fs-5 bi-mailbox2"></i><span class="ms-1 d-none d-sm-inline">Notifications</span>
+                                </a>
+                            </li>*@
+                        </ul>
+                    }
+                </div>
+                    
+            </nav>
+            </aside>
+        
+
+        <section id="content" class="seipkon-content-wrapper">
+        <div class="page-content">
+            @RenderBody()
+        </div>
+        <footer class="seipkon-footer-area">
+            <div class="container">
+               Builty by Tushar &copy; 2022 - BeastieTracker 
+            </div>
+        </footer>
+        </section>
+    </div>
+
+
+
+
+   @* <div class="container-fluid overflow-hidden">
+        <div class="row vh-100 overflow-auto">
+            <div class="col-12 col-sm-3 col-xl-2 px-sm-2 px-0 bg-dark d-flex sticky-top">
+                <div class="d-flex flex-sm-column flex-row flex-grow-1 align-items-center align-items-sm-start px-3 pt-2 text-white">
+                    <a href="/" class="d-flex align-items-center pb-sm-3 mb-md-0 me-md-auto text-white text-decoration-none">
+                        <span class="fs-5">B<span class="d-none d-sm-inline">ugTracker</span></span>
+                    </a>
+                    <partial name="_LoginPartial" />
+
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <ul class="nav nav-pills flex-sm-column flex-row flex-nowrap flex-shrink-1 flex-sm-grow-0 flex-grow-1 mb-sm-auto mb-0 justify-content-center align-items-center align-items-sm-start" id="menu">
+                            <li class="nav-item">
+                                <a asp-area="" asp-controller="Home" asp-action="Dashboard" class="nav-link px-sm-0 px-2">
+                                    <i class="fs-5 bi-house"></i><span class="ms-1 d-none d-sm-inline">Home</span>
+                                </a>
+                            </li>
+                            <li class="dropdown">
+                                <a asp-area="" asp-controller="Companies" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-building"></i><span class="ms-1 d-none d-sm-inline">Company</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    @if (User.IsInRole(nameof(Roles.Admin)))
+                                    {
+
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Companies" asp-action="ManageUserRoles">Manage Roles</a></li>
+
+                                    }
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a asp-area="" asp-controller="Projects" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-file-earmark-ppt"></i><span class="ms-1 d-none d-sm-inline">Projects</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="Create">New project...</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="Index">Index</a></li>
+                                    @if (!User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="MyProjects">My Projects</a></li>
+                                    }
+
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="AllProjects">All Projects</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="ArchivedProjects">Archived Projects</a></li>
+                                    @if (User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Projects" asp-action="UnassignedProjects">Unassigned Projects</a></li>
+                                    }
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a asp-area="" asp-controller="Tickets" asp-action="Index" class="nav-link dropdown-toggle px-sm-0 px-2" id="dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fs-5 bi-file-earmark-font"></i><span class="ms-1 d-none d-sm-inline">Tickets</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdown">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="Create">New ticket...</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="Index">Index</a></li>
+                                    @if (!User.IsInRole(nameof(Roles.Admin)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="MyTickets">My Tickets</a></li>
+                                    }
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="AllTickets">All Tickets</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="ArchivedTickets">Archived Tickets</a></li>
+                                    @if (User.IsInRole(nameof(Roles.Admin)) || User.IsInRole(nameof(Roles.ProjectManager)))
+                                    {
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Tickets" asp-action="UnassignedTickets">Unassigned Tickets</a></li>
+                                    }
+
+                                </ul>
+                            </li>
+                            <li>
+                                <a asp-area="" asp-controller="Notifications" asp-action="Index" class="nav-link px-sm-0 px-2">
+                                    <i class="fs-5 bi-mailbox2"></i><span class="ms-1 d-none d-sm-inline">Notifications</span>
+                                </a>
+                            </li>
+                        </ul>
+                    }
+                </div>
+            </div>
+            <div class="col d-flex flex-column h-100">
+                <main class="row">
+                    @RenderBody()
+                </main>
+                <footer class="row bg-light py-4 mt-auto">
+                    <div class="container">
+                        &copy; 2021 - TheBugTracker - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>*@
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+    <!-- jQuery -->
+    <script src="~/assets/js/jquery-3.1.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="~/assets/plugins/bootstrap/bootstrap.min.js"></script>
+    <!-- Bootstrap-select JS -->
+    <script src="~/assets/plugins/bootstrap-select/js/bootstrap-select.min.js"></script>
+    <!-- Daterange JS -->
+    <script src="~/assets/plugins/daterangepicker/js/moment.min.js"></script>
+    <script src="~/assets/plugins/daterangepicker/js/daterangepicker.js"></script>
+    <!-- Jvector JS -->
+    <script src="~/assets/plugins/jvector/js/jquery-jvectormap-1.2.2.min.js"></script>
+    <script src="~/assets/plugins/jvector/js/jquery-jvectormap-world-mill-en.js"></script>
+    <script src="~/assets/plugins/jvector/js/jvector-init.js"></script>
+    <!-- Raphael JS -->
+    <script src="~/assets/plugins/raphael/js/raphael.min.js"></script>
+    <!-- Morris JS -->
+    <script src="~/assets/plugins/morris/js/morris.min.js"></script>
+    <!-- Sparkline JS -->
+    <script src="~/assets/plugins/sparkline/js/jquery.sparkline.js"></script>
+    <!-- Chart JS -->
+    <script src="~/assets/plugins/charts/js/Chart.js"></script>
+    <!-- Datatables -->
+    <script src="~/assets/plugins/datatables/js/jquery.dataTables.min.js"></script>
+    <!-- Perfect Scrollbar JS -->
+    <script src="~/assets/plugins/perfect-scrollbar/jquery-perfect-scrollbar.min.js"></script>
+    <!-- Vue JS -->
+    <script src="~/assets/plugins/vue/vue.min.js"></script>
+    <!-- Summernote JS -->
+    <script src="~/assets/plugins/summernote/js/summernote.js"></script>
+    <script src="~/assets/plugins/summernote/js/custom-summernote.js"></script>
+    <!-- Dashboard JS -->
+    <script src="~/assets/js/dashboard.js"></script>
+    <!-- Custom JS -->
+    <script src="~/assets/js/seipkon.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
